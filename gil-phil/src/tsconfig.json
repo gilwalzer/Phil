@@ -1,0 +1,13 @@
+{
+    "compilerOptions": {
+      "jsx": "react",
+      "allowSyntheticDefaultImports": true,
+      "esModuleInterop": true,
+    },
+    "files": [
+        "index.tsx"
+    ],
+    "include": [
+        "index.tsx"
+    ]
+}
