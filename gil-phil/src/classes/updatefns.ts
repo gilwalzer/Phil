@@ -1,5 +1,7 @@
-export type UpdateFns = {
-    updateLabelFn: Function;
+export type UpdateFns = 
+{
+    //updateLabelFn: Function;
     updateFillFn: Function;
-    updateFocusFn: Function;
+    updateFocusFromMouseFn: Function;
+    updateFocusFromKeyFn: Function;
 }

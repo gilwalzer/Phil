@@ -1,7 +1,9 @@
-export class Direction {
+export class Direction 
+{
     currentDirection: string;
 
-    constructor(direction: string) {
+    constructor(direction: string) 
+    {
         if (direction === "across") 
         {
             this.currentDirection = "across";
@@ -15,22 +17,25 @@ export class Direction {
         }
     }
 
-    changeDirection() {
+    getOppositeDirection() 
+    {
         if (this.isAcross()) 
         {
-            this.currentDirection = "down";
+            return new Direction("down");
         }
         else
         {
-            this.currentDirection = "across";
+            return new Direction("across");
         }
     }
 
-    isAcross() {
+    isAcross() 
+    {
         return this.currentDirection === "across";
     }
 
-    isDown() {
+    isDown() 
+    {
         return this.currentDirection === "down";
     }
 }
