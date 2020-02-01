@@ -365,6 +365,10 @@ kbd {
   background-color: white;
 }
 
+#toolbar button.feature-enabled {
+  background-color: var(--lt-blue);
+}
+
 #toolbar .divider {
   width: 32px;
   border-bottom: 1px solid #ccc;
@@ -442,7 +446,7 @@ kbd {
   border-bottom: 2px solid #55b8fe;
 }
 
-.half-sidebar {
+.sidebar-panel {
   height: 50%;
 }
 

@@ -1,25 +1,36 @@
 import React from 'react';
 import './App.css';
-import { GridComponent } from './components/grid/GridComponent';
+import { GridBody } from './components/grid/GridBody';
+import { Header } from './components/header/Header';
 import { Grid } from './classes/grid';
 import { Focus } from './classes/focus';
-import { CellIndex, Cell } from './classes/cell';
-import { Direction } from './classes/direction';
+import { CellIndex } from './classes/cell';
+import { Direction, DirectionType } from './classes/direction';
 import { KeyInput, BLACK, EMPTY } from './classes/keyinput';
-
-const initializeArrayOfArrayOfCells = (width: number, height: number ) =>
-  Array.from(Array(width).keys())
-    .map(_ => 
-      Array.from(Array(height).keys()).map(_ => new Cell("", "")))
-
+import { Toolbar } from './components/toolbar/Toolbar';
+import { ExportAction } from './components/toolbar/ExportTool';
+import { PatternGenerator } from './classes/patterngenerator';
+import { Clue, Clues, SuggestedAnswersPair, CluePair } from './classes/clues';
+import { Sidebar } from './components/sidebar/Sidebar';
 
 const defaultGridWidth = 15;
 const defaultGridHeight = 15;
-const defaultGridRows: Cell[][] = initializeArrayOfArrayOfCells(defaultGridWidth, defaultGridHeight);
 
-const initialGrid = new Grid(defaultGridRows, defaultGridWidth, defaultGridHeight);
-const initialFocus = new Focus(new Direction("across"), new CellIndex(0, 0));
+const getInitialFocus = () => new Focus(
+    new Direction(DirectionType.ACROSS), new CellIndex(0, 0));
+const initialFocus = getInitialFocus();
+const defaultShouldHighlight = true;
+const getInitialGrid = () => Grid
+  .initialize(defaultGridWidth, defaultGridHeight)
+  .getGridWithNewFocus(initialFocus, initialFocus, defaultShouldHighlight);
+
 const initialIsSymmetricalGrid = true;
+const initialPatternIsFrozen = false;
+
+const initialClues = new Clues();
+
+const initialAuthor = "Anonymous";
+const initialTitle = "Untitled";
 
 type AppProps = {}
 
@@ -28,18 +39,55 @@ type AppState =
   currentGrid: Grid;
   currentFocus: Focus;
   isSymmetricalGrid: boolean;
+
+  currentAuthor: string;
+  currentTitle: string;
+
+  shouldShowExportMenu: boolean;
+
+  patternIsFrozen: boolean;
+
+  currentClues: Clues;
+  currentSuggestedAnswersPair: SuggestedAnswersPair;
 }
 
 export class App extends React.Component<AppProps, AppState> 
 {
+  private patternGenerator: PatternGenerator;
+
   constructor(props: AppProps) 
   {
-      super(props);
-      this.state = { 
-        currentGrid: initialGrid, 
-        currentFocus: initialFocus,
-        isSymmetricalGrid: initialIsSymmetricalGrid
-      };
+    super(props);
+
+    const initialFocus = getInitialFocus();
+    const shouldHighlight = true;
+    const initialGrid = getInitialGrid()
+      .getGridWithNewLabels()
+      .getGridWithNewFocus(
+        initialFocus,
+        initialFocus, 
+        shouldHighlight);
+
+    this.state = { 
+      currentGrid: initialGrid, 
+      currentFocus: initialFocus,
+      isSymmetricalGrid: initialIsSymmetricalGrid,
+      
+      currentAuthor: initialAuthor,
+      currentTitle: initialTitle,
+
+      shouldShowExportMenu: false,
+      
+      patternIsFrozen: initialPatternIsFrozen,
+
+      currentClues: initialClues,
+      currentSuggestedAnswersPair: {
+        acrossAnswers: [],
+        downAnswers: []
+      },
+    };
+
+    this.patternGenerator = new PatternGenerator(this.state.currentGrid.metadata);
   }
 
   render() 
@@ -51,19 +99,59 @@ export class App extends React.Component<AppProps, AppState>
       updateFillFn: this.updateGivenFillKeyInput,
     }
 
+    const toolbarHandlers =
+    {
+      newToolHandlers: { handleClick: this.createNewPuzzle },
+      openToolHandlers: { updateGridFromUploadedFile: this.updateGridFromUploadedFile },
+      exportToolHandlers: { handleExport: this.handleExport, toggleExportMenu: this.toggleExportMenu },
+      generatePatternToolHandlers: { handleClick: this.generateRandomGrid, },
+      freezePatternToolHandlers: { handleClick: this.toggleFreezePattern, },
+      clearFillToolHandlers: { handleClick: this.clearFill, },
+      toggleSymmetryToolHandlers: { handleClick: this.toggleIsSymmetricalGrid, },
+      importDictionaryToolHandlers: { updateDictionaryFromUploadedFile: this.updateDictionaryFromUploadedFile, },
+      autoFillToolHandlers: { handleClick: this.autoFill },
+    }
+
+    const toolbarDisplays = 
+    {
+      shouldShowExportMenu: this.state.shouldShowExportMenu, 
+      patternIsFrozen: this.state.patternIsFrozen,
+      isSymmetricalGrid: this.state.isSymmetricalGrid,
+    }
+
+    const cluePair = this.getCluesFromCurrentCellIndex(this.state.currentFocus.focusCellIndex);
+    console.log("bout to render sidebar. cluePair", cluePair)
     return (
-        <div id="main">
+        <div>
           <link rel="stylesheet" type="text/css" href="style.css" />
           <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" />
-          <GridComponent 
+          <Header 
+            author={this.state.currentAuthor}
+            updateAuthor={this.updateAuthor} 
+            title={this.state.currentTitle}
+            updateTitle={this.updateTitle}
+          />
+          <Toolbar
+            toolbarHandlers={toolbarHandlers}
+            toolbarDisplays={toolbarDisplays}
+          />
+          <GridBody 
             gridData={this.state.currentGrid}
             focusData={this.state.currentFocus}
             updateFns={updateFns}
+          />
+          <Sidebar
+            cluePair={cluePair}
+            setClue={this.setClue}
+            getWordAtClue={this.getWordAtClue}
+            suggestedAnswersPair={this.state.currentSuggestedAnswersPair}
+            fillGridFromSelectedAnswer={this.fillGridFromSelectedAnswer}
           />
         </div>
     );
   }
   
+  // -------GRID OPERATIONS-----------------------
   updateGivenFillKeyInput = (cellIndex: CellIndex, keyInput: KeyInput): void => 
   {
     const { currentGrid, currentFocus, isSymmetricalGrid } = this.state;
@@ -103,7 +191,7 @@ export class App extends React.Component<AppProps, AppState>
       newGrid, 
       shouldSkipBlackSquares)
 
-    this.finalizeState(newGrid, newFocus);
+    this.finalizeGrid(newGrid, newFocus);
   }
   
   updateGivenMouseInput = (cellIndex: CellIndex) => 
@@ -117,7 +205,7 @@ export class App extends React.Component<AppProps, AppState>
       ? new Focus(direction.getOppositeDirection(), cellIndex)
       : new Focus(direction, cellIndex);
     
-    this.finalizeState(currentGrid, newFocus);
+    this.finalizeGrid(currentGrid, newFocus);
   }
 
   updateGivenFocusKeyInput = (cellIndex: CellIndex, key: KeyInput): void => 
@@ -125,10 +213,10 @@ export class App extends React.Component<AppProps, AppState>
     const { currentGrid, currentFocus } = this.state;
     const newFocus = currentFocus.getFocusGivenFocusKeyInput(key, currentGrid.metadata);
     
-    this.finalizeState(currentGrid, newFocus);
+    this.finalizeGrid(currentGrid, newFocus);
   }
 
-  finalizeState = (grid: Grid, newFocus: Focus): void => 
+  finalizeGrid = (grid: Grid, newFocus: Focus): void => 
   {
     const { currentFocus } = this.state;
     const shouldHighlight = !grid
@@ -136,5 +224,158 @@ export class App extends React.Component<AppProps, AppState>
       .isBlack();    
     const finalGrid = grid.getGridWithNewFocus(currentFocus, newFocus, shouldHighlight);
     this.setState({ currentGrid: finalGrid, currentFocus: newFocus });
+  }
+
+  // -------HEADER OPERATIONS-----------------------
+  updateAuthor = (author: string) => 
+  {
+    if (author !== this.state.currentAuthor)
+    {
+      this.setState({ currentAuthor: author });
+    }
+  }
+  
+  updateTitle = (title: string) => 
+  {
+    if (title !== this.state.currentTitle)
+    {
+      this.setState({ currentTitle: title });
+    }
+  }
+
+  // -------TOOLBAR OPERATIONS-----------------------
+  createNewPuzzle = () =>
+  {
+    const initialFocus = getInitialFocus();
+    const initialGrid = getInitialGrid();
+
+    this.setState({ 
+      currentAuthor: initialAuthor,
+      currentTitle: initialTitle,
+      currentFocus: initialFocus,
+      currentGrid: initialGrid,
+    })
+  }
+
+  updateGridFromUploadedFile = (event: React.ChangeEvent<HTMLInputElement>) =>
+  {
+    event.stopPropagation();
+    event.preventDefault();
+    const files = event.target.files;
+    if (files != null && files.length > 0)
+    {
+      const file = files[0]
+      console.log("file:", file);
+    }
+
+    // TODO
+    // send file to backend route internal.gilwalzer/getJsonForFile
+    // get back json
+    // initialize grid from json
+    alert("this feature is not ready!");
+  }
+
+  handleExport = (exportAction: ExportAction) =>
+  {
+    // TODO
+    // get grid as JSON
+    // send JSON to backend route internal.gilwalzer/getFileForJson?exportAction={exportAction}
+    // get back file
+    // download it
+    alert("this feature is not ready!");
+  }
+
+  toggleExportMenu = (shouldShowExportMenu: boolean) =>
+  {
+      this.setState({ shouldShowExportMenu: shouldShowExportMenu })
+  }
+
+  generateRandomGrid = () =>
+  {
+    const grid = this.patternGenerator.generatePatternFromPrepopulatedList();
+    if (grid !== null) {
+      this.setState({ currentGrid: grid });
+    }
+  }
+
+  toggleFreezePattern = () =>
+  {
+    // TODO respect patternIsFrozen in grid.ts
+    this.setState({ patternIsFrozen: !this.state.patternIsFrozen });
+  }
+
+  toggleIsSymmetricalGrid = () =>
+  {
+    this.setState({ isSymmetricalGrid: !this.state.isSymmetricalGrid });
+  }
+
+  clearFill = () =>
+  {
+    //TODO clear fill
+  }
+
+  updateDictionaryFromUploadedFile = (event: React.ChangeEvent<HTMLInputElement>) =>
+  {
+    event.stopPropagation();
+    event.preventDefault();
+    const files = event.target.files;
+    if (files != null && files.length > 0)
+    {
+      const file = files[0]
+      console.log("file:", file);
+    }
+
+    // TODO
+    // send file to backend route internal.gilwalzer/getJsonForFile
+    // get back json
+    // initialize dictionary from json
+    alert("this feature is not ready!");
+  }
+
+  autoFill = () => 
+  {
+    alert("this feature is not ready!");
+  }
+
+  // ---------SIDEBAR OPERATIONS-----------------------
+  getCluesFromCurrentCellIndex = (cellIndex: CellIndex) =>
+  {
+    const { currentGrid, currentClues } = this.state;
+    const firstCellIndexOfAcross = currentGrid.getFirstCellIndexInWordGivenDirection(
+      cellIndex, 
+      new Direction(DirectionType.ACROSS));
+    const firstCellIndexOfDown = currentGrid.getFirstCellIndexInWordGivenDirection(
+      cellIndex, 
+      new Direction(DirectionType.DOWN));
+
+    console.log("initializing clues for ", firstCellIndexOfAcross, firstCellIndexOfDown)
+    const cluePair: CluePair = {
+      acrossClue: currentClues.getOrInitializeClue(
+          firstCellIndexOfAcross, 
+          currentGrid.getCellAtIndex(firstCellIndexOfAcross), 
+          DirectionType.ACROSS),
+      downClue: currentClues.getOrInitializeClue(
+        firstCellIndexOfDown,
+        currentGrid.getCellAtIndex(firstCellIndexOfDown),
+        DirectionType.DOWN)
+    }
+    console.log(cluePair)
+    return cluePair;
+  }
+
+  setClue = (clue: Clue, newText: string) =>
+  {
+    this.state.currentClues.setClue(clue, newText);
+  }
+
+  getWordAtClue = (clue: Clue) => 
+  {
+    const { firstCellIndex } = clue.clueReference;
+    return this.state.currentGrid.getCellAtIndex(firstCellIndex).fill;
+  }
+
+  fillGridFromSelectedAnswer = (answer: string) =>
+  {
+    alert("this feature is not ready!")
   }
 }

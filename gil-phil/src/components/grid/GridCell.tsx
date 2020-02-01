@@ -1,7 +1,7 @@
 import React, { Component, createRef, RefObject } from 'react';
 import { Grid } from '../../classes/grid';
 import { CellIndex, Cell } from '../../classes/cell';
-import { UpdateFns } from '../../classes/updatefns';
+import { UpdateFns } from './GridBody';
 import { Focus } from '../../classes/focus';
 import { KeyInput } from '../../classes/keyinput';
 

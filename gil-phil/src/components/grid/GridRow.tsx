@@ -2,7 +2,7 @@ import React from 'react';
 import { GridCell } from './GridCell';
 import { Grid } from '../../classes/grid';
 import { Cell, CellIndex } from '../../classes/cell';
-import { UpdateFns } from '../../classes/updatefns';
+import { UpdateFns } from './GridBody';
 import { Focus } from '../../classes/focus';
 
 type GridRowProps = 

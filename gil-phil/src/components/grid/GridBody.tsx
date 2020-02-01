@@ -1,22 +1,27 @@
 import React from 'react';
-import { GridRow } from './GridRow';
 import { Grid } from '../../classes/grid';
-import { UpdateFns } from '../../classes/updatefns';
 import { Focus } from '../../classes/focus';
+import { GridRow } from './GridRow';
 
-type GridBodyProps = 
+export type UpdateFns = 
+{
+    updateFillFn: Function;
+    updateFocusFromMouseFn: Function;
+    updateFocusFromKeyFn: Function;
+}
+
+type GridProps = 
 {
     gridData: Grid;
     focusData: Focus;
     updateFns: UpdateFns;
 }
-
-export class GridBody extends React.Component<GridBodyProps> 
+ 
+export class GridBody extends React.Component<GridProps> 
 {
     render() 
     {
         const { gridData, updateFns, focusData } = this.props;
-
         const renderedRows = [];
         for (var rowIndex: number = 0; rowIndex < gridData.metadata.height; rowIndex++)
         {
@@ -31,9 +36,13 @@ export class GridBody extends React.Component<GridBodyProps>
             )
         }
         return (
-            <tbody>
-                {renderedRows}
-            </tbody>
+            <div id="main">
+                <table id="grid">
+                    <tbody>
+                        {renderedRows}
+                    </tbody>
+                </table>
+            </div>
         )
     }
 }

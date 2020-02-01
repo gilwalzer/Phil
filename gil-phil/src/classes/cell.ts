@@ -1,5 +1,5 @@
 import { GridMetadata } from "./grid";
-import { BLACK } from "./keyinput";
+import { BLACK, EMPTY } from "./keyinput";
 
 export class Cell 
 {
@@ -21,6 +21,16 @@ export class Cell
     isBlack() 
     {
         return this.fill === BLACK; 
+    }
+    
+    static Black()
+    {
+        return new Cell(BLACK, EMPTY);
+    }
+
+    static Empty()
+    {
+        return new Cell(EMPTY, EMPTY);
     }
 }
 

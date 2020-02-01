@@ -8,27 +8,32 @@ export class Grid
     rows: Cell[][];
     metadata: GridMetadata;
 
-    constructor(rows: Cell[][], width: number, height: number)
+    constructor(rows: Cell[][],  metadata: GridMetadata)
     {
         this.rows = [];
-        for (var rowIndex = 0; rowIndex < height; rowIndex++) 
+        this.metadata = metadata;
+        for (var rowIndex = 0; rowIndex < metadata.height; rowIndex++) 
         {
             var row = [];
-            for (var colIndex = 0; colIndex < width; colIndex++) 
+            for (var colIndex = 0; colIndex < metadata.width; colIndex++) 
             {
                 row.push(rows[rowIndex][colIndex]);
             }
             this.rows.push(row);
         }
-        this.metadata = new GridMetadata(width, height);
     }
+
+    static initialize(width: number, height: number): Grid
+    {
+        const cells = initializeArrayOfArrayOfCells(width, height);
+        return new Grid(cells, new GridMetadata(width, height));
+    }
+
+    clone: () => Grid = () => new Grid(this.rows, this.metadata);
 
     getGridWithNewValue(newFill: string, cellIndex: CellIndex): Grid 
     {
-        var newGrid = new Grid(
-          this.rows, 
-          this.metadata.width,
-          this.metadata.height);
+        var newGrid = this.clone();
         const oldCell = this.rows[cellIndex.rowIndex][cellIndex.columnIndex];
         var newCell = new Cell(newFill, oldCell.label);
         newCell.isFocused = oldCell.isFocused;
@@ -38,10 +43,7 @@ export class Grid
     
     getGridWithNewLabels(): Grid 
     {
-        var newGrid = new Grid(
-          this.rows, 
-          this.metadata.width,
-          this.metadata.height);
+        var newGrid = this.clone();
 
         var currentLabel = 1;
         for (var row = 0; row < this.metadata.height; row++)
@@ -73,10 +75,7 @@ export class Grid
     getGridWithNewFocus(currentFocus: Focus, newFocus: Focus, shouldHighlight: boolean): Grid 
     {
         const currentFocusCellIndex = currentFocus.focusCellIndex;
-        var newGrid = new Grid(
-          this.rows, 
-          this.metadata.width,
-          this.metadata.height);
+        var newGrid = this.clone();
 
         // reset focus and focus directions
         var currentFocusCell = this.getCellAtIndex(currentFocusCellIndex);
@@ -137,6 +136,32 @@ export class Grid
         }
     }
 
+    getFirstCellIndexInWordGivenDirection(cellIndex: CellIndex, direction: Direction): CellIndex
+    {
+        let nextCellIndex;
+
+        // walk left or up until the adjacent cell is black or off the grid
+        while (true)
+        {
+            if ((direction.isAcross() && cellIndex.columnIndex === 0)
+                || (direction.isDown() && cellIndex.rowIndex === 0))
+            {
+                return cellIndex;
+            }
+
+            nextCellIndex = this.getPreviousCellIndexGivenDirection(
+                cellIndex,
+                direction,
+                false);
+            
+            if (this.getCellAtIndex(nextCellIndex).isBlack())
+            {
+                return cellIndex;
+            }
+            cellIndex = nextCellIndex;
+        }
+    }
+
     getPreviousCellIndexGivenDirection(
         cellIndex: CellIndex, 
         direction: Direction,
@@ -144,7 +169,7 @@ export class Grid
     {
         if (direction.isAcross())
         {
-            // return the next square in the row that isn't black
+            // return the next-left square in the row that isn't black
             for (var col = cellIndex.columnIndex - 1; col >= 0; col--)
             {
                 const index = new CellIndex(cellIndex.rowIndex, col);
@@ -159,7 +184,7 @@ export class Grid
         }
         else 
         {
-            // return the next square in the column that isn't black
+            // return the next-up square in the column that isn't black
             for (var row = cellIndex.rowIndex - 1; row >= 0; row--)
             {
                 const index = new CellIndex(row, cellIndex.columnIndex);
@@ -304,6 +329,12 @@ export class Grid
         }
     }
 }
+
+const initializeArrayOfArrayOfCells = (width: number, height: number ) =>
+Array.from(Array(width).keys())
+  .map(_ => 
+    Array.from(Array(height).keys()).map(_ => Cell.Empty()))
+
 
 export class GridMetadata {
     width: number;
