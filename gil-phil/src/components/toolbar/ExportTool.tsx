@@ -34,7 +34,7 @@ export class ExportTool extends React.Component<ExportToolProps, ExportToolState
     {
         super(props);
         this.exportMenuRef = createRef<ExportMenu>();
-//        this.downloadLink = props.downloadLink; // TODO implement
+//      this.downloadLink = props.downloadLink; // TODO implement
         this.state = { defaultAction: ExportAction.JSON };
     }
 

@@ -4,7 +4,7 @@ import { GridBody } from './components/grid/GridBody';
 import { Header } from './components/header/Header';
 import { Grid } from './classes/grid';
 import { Focus } from './classes/focus';
-import { CellIndex } from './classes/cell';
+import { CellIndex, Cell } from './classes/cell';
 import { Direction, DirectionType } from './classes/direction';
 import { KeyInput, BLACK, EMPTY } from './classes/keyinput';
 import { Toolbar } from './components/toolbar/Toolbar';
@@ -12,7 +12,7 @@ import { ExportAction } from './components/toolbar/ExportTool';
 import { PatternGenerator } from './classes/patterngenerator';
 import { Clue, Clues, SuggestedAnswersPair, CluePair } from './classes/clues';
 import { Sidebar } from './components/sidebar/Sidebar';
-
+import { Footer } from './components/footer/Footer';
 const defaultGridWidth = 15;
 const defaultGridHeight = 15;
 
@@ -120,7 +120,6 @@ export class App extends React.Component<AppProps, AppState>
     }
 
     const cluePair = this.getCluesFromCurrentCellIndex(this.state.currentFocus.focusCellIndex);
-    console.log("bout to render sidebar. cluePair", cluePair)
     return (
         <div>
           <link rel="stylesheet" type="text/css" href="style.css" />
@@ -147,6 +146,7 @@ export class App extends React.Component<AppProps, AppState>
             suggestedAnswersPair={this.state.currentSuggestedAnswersPair}
             fillGridFromSelectedAnswer={this.fillGridFromSelectedAnswer}
           />
+          <Footer />
         </div>
     );
   }
@@ -154,7 +154,11 @@ export class App extends React.Component<AppProps, AppState>
   // -------GRID OPERATIONS-----------------------
   updateGivenFillKeyInput = (cellIndex: CellIndex, keyInput: KeyInput): void => 
   {
-    const { currentGrid, currentFocus, isSymmetricalGrid } = this.state;
+    const { 
+      currentGrid, 
+      currentFocus, 
+      isSymmetricalGrid, 
+      currentClues } = this.state;
     const { metadata: gridMetadata } = currentGrid;
     const newFill = keyInput.getFillValue();
 
@@ -178,6 +182,8 @@ export class App extends React.Component<AppProps, AppState>
       }
       // recompute the labels
       newGrid = newGrid.getGridWithNewLabels();
+      const newClues = currentClues.reassignLabelsToClues(newGrid);
+      this.setState({ currentClues: newClues })
     }
 
     /*
@@ -341,6 +347,14 @@ export class App extends React.Component<AppProps, AppState>
   getCluesFromCurrentCellIndex = (cellIndex: CellIndex) =>
   {
     const { currentGrid, currentClues } = this.state;
+    const currentCell = currentGrid.getCellAtIndex(cellIndex);
+    if (currentCell.isBlack())
+    {
+      return {
+        acrossClue: Clue.getEmptyClue(),
+        downClue: Clue.getEmptyClue()
+      };
+    }
     const firstCellIndexOfAcross = currentGrid.getFirstCellIndexInWordGivenDirection(
       cellIndex, 
       new Direction(DirectionType.ACROSS));
@@ -348,7 +362,6 @@ export class App extends React.Component<AppProps, AppState>
       cellIndex, 
       new Direction(DirectionType.DOWN));
 
-    console.log("initializing clues for ", firstCellIndexOfAcross, firstCellIndexOfDown)
     const cluePair: CluePair = {
       acrossClue: currentClues.getOrInitializeClue(
           firstCellIndexOfAcross, 
@@ -359,7 +372,6 @@ export class App extends React.Component<AppProps, AppState>
         currentGrid.getCellAtIndex(firstCellIndexOfDown),
         DirectionType.DOWN)
     }
-    console.log(cluePair)
     return cluePair;
   }
 
@@ -370,8 +382,41 @@ export class App extends React.Component<AppProps, AppState>
 
   getWordAtClue = (clue: Clue) => 
   {
-    const { firstCellIndex } = clue.clueReference;
-    return this.state.currentGrid.getCellAtIndex(firstCellIndex).fill;
+    var word = "";
+    
+    if (clue.isEmptyClue()) 
+    {
+      return word;
+    }
+    
+    const { firstCellIndex, clueDirection } = clue.clueReference;
+    const direction = new Direction(clueDirection);
+    var currentCellIndex = firstCellIndex;
+    const { currentGrid } = this.state;
+    let currentCell: Cell;
+
+    // walk forward, construcing a word until finding a black square or the edge
+    while (true)
+    {
+      currentCell = currentGrid.getCellAtIndex(currentCellIndex);
+      if (currentCell.isBlack())
+      {
+        break;
+      }
+      word = word + (currentCell.isEmpty() ? "-" : currentCell.fill);
+
+      if (currentGrid.metadata.isCellIndexFinalGivenDirection(currentCellIndex, direction))
+      {
+        break;
+      }
+
+      currentCellIndex = currentGrid.getNextCellIndexGivenDirection(
+        currentCellIndex,
+        direction,
+        false);
+    }
+
+    return word;
   }
 
   fillGridFromSelectedAnswer = (answer: string) =>

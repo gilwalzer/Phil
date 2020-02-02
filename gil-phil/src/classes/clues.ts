@@ -6,11 +6,20 @@ export class ClueReference
 {
     firstCellIndex: CellIndex;
     clueDirection: DirectionType;
-
+    isEmptyRef: boolean;
+    
     constructor(firstCellIndex: CellIndex, clueDirection: DirectionType)
     {
         this.firstCellIndex = firstCellIndex;
         this.clueDirection = clueDirection;
+        this.isEmptyRef = false;
+    }
+
+    static getEmptyRef()
+    {
+        const clueRef = new ClueReference(new CellIndex(-1, -1), DirectionType.ACROSS)
+        clueRef.isEmptyRef = true;
+        return clueRef;
     }
 
     asUniqueKey()
@@ -45,6 +54,17 @@ export class Clue
         return new Clue(clueReference, label, Clue.defaultClueText);
     }
 
+    static getEmptyClue()
+    {
+        const fakeRef = ClueReference.getEmptyRef(); 
+        return new Clue(fakeRef, "", "")
+    }
+
+    isEmptyClue(): boolean
+    {
+        return this.clueReference.isEmptyRef;        
+    }
+
     setLabel(label: string): void
     {
         this.label = label;
@@ -54,9 +74,6 @@ export class Clue
     {
         this.clueText = clueText;
     }
-
-    isLabeled = () => this.label !== null
-    isClued = () => this.clueText !== null
 }
 
 export type CluePair =
@@ -76,7 +93,27 @@ export class Clues
 
     reassignLabelsToClues = (grid: Grid) => 
     {
-        // TODO
+        for (var key of this.cluesByReferenceKey.keys())
+        {
+            const row = parseInt(key.split(",")[0].split(":")[1])
+            const col = parseInt(key.split(",")[1].split(":")[1])
+            const cellIndex = new CellIndex(row, col);
+            const newCell = grid.getCellAtIndex(cellIndex);
+            if (newCell.isBlack())
+            {
+                this.cluesByReferenceKey.delete(key);
+            }
+            else
+            {
+                const clue = this.cluesByReferenceKey.get(key);
+                if (clue !== undefined)
+                {
+                    clue.setLabel(buildLabel(newCell.label, clue.clueReference.clueDirection));
+                }
+                console.log(clue, this.cluesByReferenceKey.get(key))
+            }
+        }
+        return this;
     }
 
     setClue = (clue: Clue, newText: string) => 
@@ -102,12 +139,17 @@ export class Clues
                 return clue;
             }
         }
-        const clueLabel = firstCell.label + "" + Direction.getTypeAsLetter(direction) + ".";
+        const clueLabel = buildLabel(firstCell.label, direction);
         const newClue = Clue.initialize(clueReference, clueLabel);
 
         cluesByReferenceKey.set(clueKey, newClue);
         return newClue;
     }
+}
+
+function buildLabel(label: string, direction: DirectionType)
+{
+    return label + "" + Direction.getTypeAsLetter(direction) + ".";
 }
 
 export type SuggestedAnswersPair = 

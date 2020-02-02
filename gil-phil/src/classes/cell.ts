@@ -23,6 +23,11 @@ export class Cell
         return this.fill === BLACK; 
     }
     
+    isEmpty()
+    {
+        return this.fill === EMPTY;
+    }
+    
     static Black()
     {
         return new Cell(BLACK, EMPTY);

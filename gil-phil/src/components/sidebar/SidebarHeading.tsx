@@ -43,7 +43,8 @@ export class SidebarHeading extends React.Component<SidebarHeadingProps, Sidebar
                         key={label}
                         id={directionName + "-clue-text"} 
                         className="editable" 
-                        contentEditable="true" 
+                        contentEditable="true"
+                        spellCheck="false" 
                         onKeyDown={(event) => handleEnter(event)} 
                         onBlur={(event) => this.handleFocusOut(event)}
                         dangerouslySetInnerHTML={ {__html: clueText} }></span>
@@ -56,13 +57,11 @@ export class SidebarHeading extends React.Component<SidebarHeadingProps, Sidebar
     }
 
     handleFocusOut = (event: React.FocusEvent) => {
-        console.log("focus out!")
         const { setClue, currentClue } = this.props;
 
         const currentNode = this.clueTextRef.current;
         if (currentNode != null && currentNode.textContent != null)
         {
-            console.log(currentClue, currentNode.textContent)
             setClue(currentClue, currentNode.textContent);
         }
     }

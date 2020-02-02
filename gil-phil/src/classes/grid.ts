@@ -347,4 +347,16 @@ export class GridMetadata {
 
     firstKey = () => 0;
     lastKey = () => (this.width * this.height) - 1;
+
+    isCellIndexFinalGivenDirection(cellIndex: CellIndex, direction: Direction)
+    {
+        if (direction.isAcross())
+        {
+            return cellIndex.columnIndex === this.width - 1;
+        }
+        else
+        {
+            return cellIndex.rowIndex === this.height - 1;
+        }
+    }
 }
